@@ -38,7 +38,8 @@ def main(input_filepath, output_filepath):
             os.remove(os.path.join(output_filepath, file_name))
 
     # Delete MAC_OS folder
-    shutil.rmtree(os.path.join(output_filepath, '__MACOSX'))
+    if os.path.isdir(os.path.join(output_filepath, '__MACOSX')):
+        shutil.rmtree(os.path.join(output_filepath, '__MACOSX'))
 
 
 if __name__ == '__main__':
