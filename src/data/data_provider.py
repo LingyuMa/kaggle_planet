@@ -24,9 +24,11 @@ def read_and_decode(filename_queue):
     shape = tf.decode_raw(features['shape'], tf.int32)
     label = tf.decode_raw(features['label'], tf.int32)
 
-    image = tf.reshape(image, shape)
+    #image = tf.reshape(image, shape)
+    image = tf.reshape(image, [256, 256, 4])
+    label = tf.reshape(label, [17])
 
-    print(image)
+    print(label)
     return image, label
 
 
@@ -61,11 +63,15 @@ def train_inputs(batch_size):
     print('Filling queue with {} images before starting to train.'.format(min_queue_examples))
     return generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle=True)
 
+
 if __name__ == "__main__":
+    images, label_batch = train_inputs(16)
+    init_op = tf.group(tf.global_variables_initializer(),
+                       tf.local_variables_initializer())
     with tf.Session() as sess:
-        images, label_batch = train_inputs(16)
+        sess.run(init_op)
         coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(coords=coord)
+        threads = tf.train.start_queue_runners(coord=coord)
 
         imgs, labs = sess.run([images, label_batch])
         print(imgs)
