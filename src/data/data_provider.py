@@ -1,11 +1,5 @@
-import os
 import tensorflow as tf
-
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 5000
-
-current_dir = os.path.dirname(__file__)
-train_data_path = os.path.join(current_dir, r'../../data/processed/train_set.txt')
-validation_data_path = os.path.join(current_dir, r'../../data/processed/validation_set.txt')
+import src.settings as settings
 
 
 def read_and_decode(filename_queue):
@@ -15,20 +9,16 @@ def read_and_decode(filename_queue):
         serialized_example,
         features={
             'label': tf.FixedLenFeature([], tf.string),
-            'shape': tf.FixedLenFeature([], tf.string),
             'image': tf.FixedLenFeature([], tf.string)
         }
     )
 
     image = tf.decode_raw(features['image'], tf.uint8)
-    shape = tf.decode_raw(features['shape'], tf.int32)
     label = tf.decode_raw(features['label'], tf.int32)
 
-    #image = tf.reshape(image, shape)
-    image = tf.reshape(image, [256, 256, 4])
-    label = tf.reshape(label, [17])
+    image = tf.reshape(image, [settings.RAW_IMAGE_HEIGHT, settings.RAW_IMAGE_WIDTH, settings.RAW_IMAGE_DEPTH])
+    label = tf.reshape(label, [settings.LABELS_SIZE])
 
-    print(label)
     return image, label
 
 
@@ -54,11 +44,11 @@ def generate_image_and_label_batch(image, label, min_queue_examples, batch_size,
 
 
 def train_inputs(batch_size):
-    filename_queue = tf.train.string_input_producer([train_data_path])
+    filename_queue = tf.train.string_input_producer([settings.TRAIN_DATA_PATH])
     image, label = read_and_decode(filename_queue)
 
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(min_fraction_of_examples_in_queue * NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
+    min_queue_examples = int(min_fraction_of_examples_in_queue * settings.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
 
     print('Filling queue with {} images before starting to train.'.format(min_queue_examples))
     return generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle=True)
