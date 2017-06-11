@@ -1,5 +1,9 @@
 import tensorflow as tf
+import src.data.utils as utils
 import src.settings as settings
+import numpy as np
+import random
+import matplotlib.pyplot as plt
 
 
 def read_and_decode(filename_queue):
@@ -13,7 +17,7 @@ def read_and_decode(filename_queue):
         }
     )
 
-    image = tf.decode_raw(features['image'], tf.uint8)
+    image = tf.decode_raw(features['image'], tf.int32)
     label = tf.decode_raw(features['label'], tf.int32)
 
     image = tf.reshape(image, [settings.RAW_IMAGE_HEIGHT, settings.RAW_IMAGE_WIDTH, settings.RAW_IMAGE_DEPTH])
@@ -39,13 +43,29 @@ def generate_image_and_label_batch(image, label, min_queue_examples, batch_size,
             num_threads=num_preprocess_threads,
             capacity=min_queue_examples + 3 * batch_size
         )
-
     return images, label_batch
 
 
 def train_inputs(batch_size):
     filename_queue = tf.train.string_input_producer([settings.TRAIN_DATA_PATH])
     image, label = read_and_decode(filename_queue)
+
+    # Resize the image if necessary
+    if settings.IMAGE_WIDTH < settings.RAW_IMAGE_WIDTH or settings.IMAGE_HEIGHT < settings.RAW_IMAGE_HEIGHT:
+        image = tf.image.resize_images(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH])
+
+    # Augment the image set
+    if settings.DATA_AUGMENTATION:
+        image = tf.image.random_flip_left_right(image)
+        image = tf.image.random_flip_up_down(image)
+        # rotate image randomly
+        rotate_angle = random.choice(np.arange(0, 2 * np.pi, np.pi / 4).tolist())
+        print(rotate_angle)
+        image = utils.rotate_image_tensor(image, rotate_angle, 'black')
+
+    # Normalize the image
+    if settings.NORMALIZE_IMAGE:
+        image = tf.image.per_image_standardization(image)
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(min_fraction_of_examples_in_queue * settings.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN)
@@ -54,16 +74,45 @@ def train_inputs(batch_size):
     return generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle=True)
 
 
+def inputs(eval_data, batch_size):
+    if eval_data:
+        filename_queue = tf.train.string_input_producer([settings.VALIDATION_DATA_PATH])
+        num_examples_per_epoch = settings.NUM_EXAMPLES_PER_EPOCH_FOR_VALIDATION
+    else:
+        filename_queue = tf.train.string_input_producer([settings.TRAIN_DATA_PATH])
+        num_examples_per_epoch = settings.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
+
+    image, label = read_and_decode(filename_queue)
+
+    # Resize the image if necessary
+    if settings.IMAGE_WIDTH < settings.RAW_IMAGE_WIDTH or settings.IMAGE_HEIGHT < settings.RAW_IMAGE_HEIGHT:
+        image = tf.image.resize_images(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH])
+
+    # Normalize the image
+    if settings.NORMALIZE_IMAGE:
+        image = tf.image.per_image_standardization(image)
+
+    min_fraction_of_examples_in_queue = 0.4
+    min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
+
+    return generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle=False)
+
+
 if __name__ == "__main__":
-    images, label_batch = train_inputs(16)
+    images, label_batch = train_inputs(512)
     init_op = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
+
     with tf.Session() as sess:
         sess.run(init_op)
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
 
         imgs, labs = sess.run([images, label_batch])
-        print(imgs)
+        img = imgs[0, :, :, 0]
+        print(img)
+        plt.imshow(img, cmap='gray')
+        plt.show()
+
         coord.request_stop()
         coord.join(threads)

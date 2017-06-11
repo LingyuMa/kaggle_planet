@@ -11,7 +11,7 @@ import src.settings as settings
 
 
 def get_image_binary(filename):
-    return np.asarray(io.imread(filename), np.uint8).tobytes()
+    return np.asarray(io.imread(filename), np.int32).tobytes()
 
 
 def write_to_tfrecord():
@@ -32,6 +32,7 @@ def write_to_tfrecord():
         label = np.zeros(settings.LABELS_SIZE, np.int32)
         for tag in tags:
             label[settings.LABELS[tag]] = 1
+
         binary_image = get_image_binary(img)
         example = tf.train.Example(features=tf.train.Features(feature={
             'label': tf.train.Feature(bytes_list=tf.train.BytesList(value=[label.tobytes()])),
