@@ -4,15 +4,14 @@ import src.settings as settings
 
 
 def inference(images, training=True):
-    regularizer = tf.contrib.layers.l2_regularizer(scale=settings.REGULARIZER)
+    #regularizer = tf.contrib.layers.l2_regularizer(scale=settings.REGULARIZER)
     # Feature level
     conv1 = tf.layers.conv2d(
         inputs=images,
         filters=32,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     conv2 = tf.layers.conv2d(
@@ -20,8 +19,7 @@ def inference(images, training=True):
         filters=32,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     pool1 = tf.layers.max_pooling2d(
@@ -41,8 +39,7 @@ def inference(images, training=True):
         filters=64,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     conv4 = tf.layers.conv2d(
@@ -50,8 +47,7 @@ def inference(images, training=True):
         filters=64,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     pool2 = tf.layers.max_pooling2d(
@@ -71,8 +67,7 @@ def inference(images, training=True):
         filters=128,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     conv6 = tf.layers.conv2d(
@@ -80,8 +75,7 @@ def inference(images, training=True):
         filters=128,
         kernel_size=[3, 3],
         padding='same',
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+        activation=tf.nn.relu
     )
 
     pool3 = tf.layers.max_pooling2d(
@@ -96,26 +90,58 @@ def inference(images, training=True):
         training=training
     )
 
-    # Classifier level
-    dropout3_flat = tf.contrib.layers.flatten(dropout3)
+    conv7 = tf.layers.conv2d(
+        inputs=dropout3,
+        filters=256,
+        kernel_size=[3, 3],
+        padding='same',
+        activation=tf.nn.relu
+    )
 
-    dense1 = tf.layers.dense(
-        inputs=dropout3_flat,
-        units=256,
-        activation=tf.nn.relu,
-        kernel_regularizer=regularizer
+    conv8 = tf.layers.conv2d(
+        inputs=conv7,
+        filters=256,
+        kernel_size=[3, 3],
+        padding='same',
+        activation=tf.nn.relu
+    )
+
+    pool4 = tf.layers.max_pooling2d(
+        inputs=conv8,
+        pool_size=[2, 2],
+        strides=2
     )
 
     dropout4 = tf.layers.dropout(
+        inputs=pool4,
+        rate=0.25,
+        training=training
+    )
+
+    # Classifier level
+    dropout4_flat = tf.contrib.layers.flatten(dropout4)
+
+    dense1 = tf.layers.dense(
+        inputs=dropout4_flat,
+        units=512,
+        activation=tf.nn.relu
+    )
+
+    norm1 = tf.layers.batch_normalization(
         inputs=dense1,
+        training=training
+    )
+
+    dropout5 = tf.layers.dropout(
+        inputs=norm1,
         rate=0.5,
         training=training
     )
 
     logits = tf.layers.dense(
-        inputs=dropout4,
-        units=settings.LABELS_SIZE,
-        activation=tf.nn.sigmoid
+        inputs=dropout5,
+        units=settings.LABELS_SIZE
+        #activation=tf.nn.sigmoid
     )
 
     return logits
@@ -140,7 +166,8 @@ def train(total_loss, global_step):
     tf.summary.scalar('learning_rate', lr)
 
     # Compute gradients
-    opt = tf.train.GradientDescentOptimizer(lr)
+    #opt = tf.train.GradientDescentOptimizer(lr)
+    opt = tf.train.AdamOptimizer(lr)
     grads = opt.compute_gradients(total_loss)
 
     # Apply gradients
