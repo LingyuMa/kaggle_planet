@@ -9,8 +9,9 @@ import src.data.data_provider as data
 
 import src.settings as settings
 
+from sklearn.metrics import fbeta_score
 
-def eval_once(saver, summary_writer, correct_prediction, summary_op):
+def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
     with tf.Session() as sess:
         ckpt = tf.train.get_checkpoint_state(settings.LOG_PATH)
         if ckpt and ckpt.model_checkpoint_path:
@@ -33,16 +34,19 @@ def eval_once(saver, summary_writer, correct_prediction, summary_op):
                                                  start=True))
 
             num_iter = int(math.ceil(settings.EVALUATION_NUM_EXAMPLES / settings.BATCH_SIZE))
-            true_count = 0  # Counts the number of correct predictions.
             total_sample_count = num_iter * settings.BATCH_SIZE
             step = 0
+            predictions = []
+            labels = []
             while step < num_iter and not coord.should_stop():
-                predictions = np.array(sess.run([correct_prediction])).squeeze()
-                true_count += np.all(predictions, axis=1).sum()
+                predictions.append(np.array(sess.run([y_pred])).squeeze())
+                labels.append(np.array(sess.run([y_labels])).squeeze())
                 step += 1
-
+            predictions = np.vstack(predictions)
+            labels = np.vstack(labels)
             # Compute precision @ 1.
-            precision = true_count / total_sample_count
+
+            precision = fbeta_score(labels.astype(np.bool), predictions.astype(np.bool), beta=2, average='samples')
             print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
             summary = tf.Summary()
@@ -65,7 +69,8 @@ def evaluation():
         logits = network.inference(images, training=False)
 
         # Calculate predictions
-        correct_prediction = tf.equal(tf.round(tf.sigmoid(logits)), tf.round(tf.cast(labels, tf.float32)))
+        y_pred = tf.round(tf.cast(tf.sigmoid(logits) > 0.5, tf.float32))
+        y_labels = tf.round(tf.cast(labels, tf.float32))
 
         # Restore the moving average version of the learned variables for eval
         variable_averages = tf.train.ExponentialMovingAverage(
@@ -79,7 +84,7 @@ def evaluation():
         summary_writer = tf.summary.FileWriter(settings.EVALUATION_PATH, g)
 
         while True:
-            eval_once(saver, summary_writer, correct_prediction, summary_op)
+            eval_once(saver, summary_writer, y_pred, y_labels, summary_op)
             if settings.RUN_ONCE:
                 break
             time.sleep(settings.EVALUATION_INTERVAL_SECS)
