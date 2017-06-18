@@ -54,17 +54,14 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
             predictions = []
             labels = []
             while step < num_iter and not coord.should_stop():
-                predictions.append(np.array(sess.run([y_pred])).squeeze())
-                labels.append(np.array(sess.run([y_labels])).squeeze())
+                [y_pred, y_labels] = sess.run([y_pred, y_labels])
+                predictions.append(np.array(y_pred).squeeze())
+                labels.append(np.array(y_labels).squeeze())
                 step += 1
             predictions = np.vstack(predictions)
             labels = np.vstack(labels)
             # Compute precision @ 1.
-            print(labels.shape)
-            print(predictions.shape)
             precision = fbeta_score(labels, predictions, beta=2, average='samples')
-            print(labels[-1, :])
-            print(predictions[-1, :])
             print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
             summary = tf.Summary()
@@ -81,7 +78,7 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
 def evaluation():
     with tf.Graph().as_default() as g:
         # Feed data
-        images, labels = data.train_inputs(settings.BATCH_SIZE)
+        images, labels = data.inputs(False, settings.BATCH_SIZE)
 
         # Inference model
         logits = network.inference(images, settings.NUM_RESIDUE_BLOCKS)
