@@ -11,12 +11,28 @@ import src.settings as settings
 
 from sklearn.metrics import fbeta_score
 
+
+def f2_score(y_true, y_pred):
+    y_true = tf.cast(y_true, "int32")
+    y_pred = tf.cast(tf.round(y_pred), "int32") # implicit 0.5 threshold via tf.round
+    y_correct = y_true * y_pred
+    sum_true = tf.reduce_sum(y_true, axis=1)
+    sum_pred = tf.reduce_sum(y_pred, axis=1)
+    sum_correct = tf.reduce_sum(y_correct, axis=1)
+    precision = sum_correct / sum_pred
+    recall = sum_correct / sum_true
+    f_score = 5 * precision * recall / (4 * precision + recall)
+    f_score = tf.where(tf.is_nan(f_score), tf.zeros_like(f_score), f_score)
+    return tf.reduce_mean(f_score)
+
+
 def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
     with tf.Session() as sess:
         ckpt = tf.train.get_checkpoint_state(settings.LOG_PATH)
         if ckpt and ckpt.model_checkpoint_path:
             # Restores from checkpoint
             saver.restore(sess, ckpt.model_checkpoint_path)
+            print('Model restored from {}'.format(ckpt.model_checkpoint_path))
             # Assuming model_checkpoint_path looks something like:
             #   /my-favorite-path/cifar10_train/model.ckpt-0,
             # extract global_step from it.
@@ -34,7 +50,6 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
                                                  start=True))
 
             num_iter = int(math.ceil(settings.EVALUATION_NUM_EXAMPLES / settings.BATCH_SIZE))
-            total_sample_count = num_iter * settings.BATCH_SIZE
             step = 0
             predictions = []
             labels = []
@@ -45,8 +60,11 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
             predictions = np.vstack(predictions)
             labels = np.vstack(labels)
             # Compute precision @ 1.
-
-            precision = fbeta_score(labels.astype(np.bool), predictions.astype(np.bool), beta=2, average='samples')
+            print(labels.shape)
+            print(predictions.shape)
+            precision = fbeta_score(labels, predictions, beta=2, average='samples')
+            print(labels[-1, :])
+            print(predictions[-1, :])
             print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
             summary = tf.Summary()
@@ -63,20 +81,17 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
 def evaluation():
     with tf.Graph().as_default() as g:
         # Feed data
-        images, labels = data.inputs(False, settings.BATCH_SIZE)
+        images, labels = data.train_inputs(settings.BATCH_SIZE)
 
         # Inference model
-        logits = network.inference(images, training=False)
+        logits = network.inference(images, settings.NUM_RESIDUE_BLOCKS)
 
         # Calculate predictions
         y_pred = tf.round(tf.cast(tf.sigmoid(logits) > 0.5, tf.float32))
         y_labels = tf.round(tf.cast(labels, tf.float32))
 
-        # Restore the moving average version of the learned variables for eval
-        variable_averages = tf.train.ExponentialMovingAverage(
-            settings.MOVING_AVERAGE_DECAY)
-        variables_to_restore = variable_averages.variables_to_restore()
-        saver = tf.train.Saver(variables_to_restore)
+        # Restore model
+        saver = tf.train.Saver(tf.global_variables())
 
         # Build the summary operation based on the TF collection of Summaries.
         summary_op = tf.summary.merge_all()

@@ -7,6 +7,8 @@ import src.data.data_provider as data
 
 import src.settings as settings
 
+from src.models.predict_model import f2_score
+
 
 def train():
     with tf.Graph().as_default():
@@ -17,12 +19,15 @@ def train():
             images, labels = data.train_inputs(settings.BATCH_SIZE)
 
         # Build the graph
-        logits = network.inference(images)
+        logits = network.inference(images, settings.NUM_RESIDUE_BLOCKS)
 
         # Calculate loss
         loss = network.loss(logits, labels)
 
         train_op = network.train(loss, global_step)
+
+        tf.summary.scalar('batch f2 score', f2_score(tf.round(tf.cast(labels, tf.float32)),
+                                                     tf.round(tf.cast(tf.sigmoid(logits) > 0.5, tf.float32))))
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime."""
@@ -59,7 +64,6 @@ def train():
                     log_device_placement=settings.LOG_DEVICE_PLACEMENT)) as mon_sess:
             while not mon_sess.should_stop():
                 mon_sess.run(train_op)
-
 
 if __name__ == "__main__":
     train()

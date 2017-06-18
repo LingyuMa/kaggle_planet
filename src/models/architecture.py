@@ -1,249 +1,143 @@
 import tensorflow as tf
 import src.settings as settings
+'''
+refer to: https://github.com/wenxinxu/resnet-in-tensorflow/blob/master/resnet.py
+'''
 
-def _activation_summary(x):
+
+def activation_summary(x):
     tensor_name = x.op.name
     tf.summary.histogram(tensor_name + '/activations', x)
     tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
-def network8(images, training):
-    # regularizer = tf.contrib.layers.l2_regularizer(scale=settings.REGULARIZER)
-    # Feature level
-    pre_bn = tf.layers.batch_normalization(
-        inputs=images,
-        training=training,
-        name='bn_pre'
-    )
 
-    conv1 = tf.layers.conv2d(
-        inputs=pre_bn,
-        filters=32,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv1'
-    )
-    _activation_summary(conv1)
+def create_variables(name, shape, initializer=tf.contrib.layers.xavier_initializer(), is_fc_layer=False):
+    if is_fc_layer:
+        regularizer = tf.contrib.layers.l2_regularizer(scale=settings.WEIGHT_DECAY_FC)
+    else:
+        regularizer = tf.contrib.layers.l2_regularizer(scale=settings.WEIGHT_DECAY)
 
-    conv2 = tf.layers.conv2d(
-        inputs=conv1,
-        filters=32,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv2'
-    )
-    _activation_summary(conv2)
-
-    pool1 = tf.layers.max_pooling2d(
-        inputs=conv2,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool1'
-    )
-
-    dropout1 = tf.layers.dropout(
-        inputs=pool1,
-        rate=0.25,
-        training=training,
-        name='dropout1'
-    )
-
-    conv3 = tf.layers.conv2d(
-        inputs=dropout1,
-        filters=64,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv3'
-    )
-    _activation_summary(conv3)
-
-    conv4 = tf.layers.conv2d(
-        inputs=conv3,
-        filters=64,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv4'
-    )
-    _activation_summary(conv4)
-
-    pool2 = tf.layers.max_pooling2d(
-        inputs=conv4,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool2'
-    )
-
-    dropout2 = tf.layers.dropout(
-        inputs=pool2,
-        rate=0.25,
-        training=training,
-        name='dropout2'
-    )
-
-    conv5 = tf.layers.conv2d(
-        inputs=dropout2,
-        filters=128,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv5'
-    )
-    _activation_summary(conv5)
-
-    conv6 = tf.layers.conv2d(
-        inputs=conv5,
-        filters=128,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv6'
-    )
-    _activation_summary(conv6)
-
-    pool3 = tf.layers.max_pooling2d(
-        inputs=conv6,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool3'
-    )
-
-    dropout3 = tf.layers.dropout(
-        inputs=pool3,
-        rate=0.25,
-        training=training,
-        name='dropout3'
-    )
-
-    conv7 = tf.layers.conv2d(
-        inputs=dropout3,
-        filters=256,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv7'
-    )
-    _activation_summary(conv7)
-
-    conv8 = tf.layers.conv2d(
-        inputs=conv7,
-        filters=256,
-        kernel_size=[3, 3],
-        padding='same',
-        activation=tf.nn.relu,
-        name='conv8'
-    )
-    _activation_summary(conv8)
-
-    pool4 = tf.layers.max_pooling2d(
-        inputs=conv8,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool4'
-    )
-
-    dropout4 = tf.layers.dropout(
-        inputs=pool4,
-        rate=0.25,
-        training=training,
-        name='dropout4'
-    )
-
-    # Classifier level
-    dropout4_flat = tf.contrib.layers.flatten(dropout4)
-
-    dense1 = tf.layers.dense(
-        inputs=dropout4_flat,
-        units=512,
-        activation=tf.nn.relu,
-        name='dense1'
-    )
-
-    norm1 = tf.layers.batch_normalization(
-        inputs=dense1,
-        training=training,
-        name='norm1'
-    )
-
-    dropout5 = tf.layers.dropout(
-        inputs=norm1,
-        rate=0.5,
-        training=training,
-        name='dropout5'
-    )
-
-    logits = tf.layers.dense(
-        inputs=dropout5,
-        units=settings.LABELS_SIZE,
-        # activation=tf.nn.sigmoid
-        name='logits'
-    )
-    _activation_summary(logits)
-    return logits
+    return tf.get_variable(name, shape=shape, initializer=initializer, regularizer=regularizer)
 
 
-def network2(images, training):
-    pre_bn = tf.layers.batch_normalization(
-        inputs=images,
-        training=training,
-        name='bn_pre'
-    )
+def output_layer(input_layer, num_labels):
+    input_dim = input_layer.get_shape().as_list()[-1]
+    fc_w = create_variables(name='fc_weights', shape=[input_dim, num_labels], is_fc_layer=True,
+                            initializer=tf.uniform_unit_scaling_initializer(factor=1.0))
+    fc_b = create_variables(name='fc_bias', shape=[num_labels], initializer=tf.zeros_initializer())
 
-    conv1 = tf.layers.conv2d(
-        inputs=pre_bn,
-        filters=32,
-        kernel_size=[3, 3],
-        activation=tf.nn.relu,
-        name='conv1'
-    )
-    _activation_summary(conv1)
+    return tf.matmul(input_layer, fc_w) + fc_b
 
-    conv2 = tf.layers.conv2d(
-        inputs=conv1,
-        filters=64,
-        kernel_size=[3, 3],
-        activation=tf.nn.relu,
-        name='conv2'
-    )
-    _activation_summary(conv2)
 
-    pool1 = tf.layers.max_pooling2d(
-        inputs=conv2,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool1'
-    )
+def batch_normalization_layer(input_layer, dimension):
+    mean, variance = tf.nn.moments(input_layer, axes=[0, 1, 2])
+    beta = tf.get_variable('beta', dimension, tf.float32,
+                               initializer=tf.constant_initializer(0.0, tf.float32))
+    gamma = tf.get_variable('gamma', dimension, tf.float32,
+                                initializer=tf.constant_initializer(1.0, tf.float32))
+    return tf.nn.batch_normalization(input_layer, mean, variance, beta, gamma, 0.001)
 
-    dropout1 = tf.layers.dropout(
-        inputs=pool1,
-        rate=0.25,
-        training=training,
-        name='dropout1'
-    )
 
-    dropout1_flat = tf.contrib.layers.flatten(dropout1)
+def conv_bn_relu_layer(input_layer, filter_shape, stride):
+    out_channel = filter_shape[-1]
+    filter = create_variables(name='conv', shape=filter_shape)
 
-    dense1 = tf.layers.dense(
-        inputs=dropout1_flat,
-        units=128,
-        activation=tf.nn.relu,
-        name='dense1'
-    )
+    conv_layer = tf.nn.conv2d(input_layer, filter, strides=[1, stride, stride, 1], padding='SAME')
+    bn_layer = batch_normalization_layer(conv_layer, out_channel)
 
-    dropout2 = tf.layers.dropout(
-        inputs=dense1,
-        rate=0.5,
-        training=training,
-        name='dropout5'
-    )
+    output = tf.nn.relu(bn_layer)
+    return output
 
-    logits = tf.layers.dense(
-        inputs=dropout2,
-        units=settings.LABELS_SIZE,
-        # activation=tf.nn.sigmoid
-        name='logits'
-    )
-    _activation_summary(logits)
-    return logits
+
+def bn_relu_conv_layer(input_layer, filter_shape, stride):
+    in_channel = input_layer.get_shape().as_list()[-1]
+
+    bn_layer = batch_normalization_layer(input_layer, in_channel)
+    relu_layer = tf.nn.relu(bn_layer)
+
+    filter = create_variables(name='conv', shape=filter_shape)
+    conv_layer = tf.nn.conv2d(relu_layer, filter, strides=[1, stride, stride, 1], padding='SAME')
+    return conv_layer
+
+
+def residual_block(input_layer, output_channel, first_block=False):
+    input_channel = input_layer.get_shape().as_list()[-1]
+
+    # When it's time to "shrink" the image size, we use stride = 2
+    if input_channel * 2 == output_channel:
+        increase_dim = True
+        stride = 2
+    elif input_channel == output_channel:
+        increase_dim = False
+        stride = 1
+    else:
+        raise ValueError('Output and input channel does not match in residual blocks!!!')
+
+    # The first conv layer of the first residual block does not need to be normalized and relu-ed.
+    with tf.variable_scope('conv1_in_block'):
+        if first_block:
+            filter = create_variables(name='conv', shape=[3, 3, input_channel, output_channel])
+            conv1 = tf.nn.conv2d(input_layer, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
+        else:
+            conv1 = bn_relu_conv_layer(input_layer, [3, 3, input_channel, output_channel], stride)
+
+    with tf.variable_scope('conv2_in_block'):
+        conv2 = bn_relu_conv_layer(conv1, [3, 3, output_channel, output_channel], 1)
+
+    # When the channels of input layer and conv2 does not match, we add zero pads to increase the
+    #  depth of input layers
+    if increase_dim is True:
+        pooled_input = tf.nn.avg_pool(input_layer, ksize=[1, 2, 2, 1],
+                                      strides=[1, 2, 2, 1], padding='VALID')
+        padded_input = tf.pad(pooled_input, [[0, 0], [0, 0], [0, 0], [input_channel // 2,
+                                                                     input_channel // 2]])
+    else:
+        padded_input = input_layer
+
+    return conv2 + padded_input
+
+
+def resnet(input_tensor_batch, n, reuse=False):
+
+    layers = []
+    with tf.variable_scope('conv0', reuse=reuse):
+        conv0 = conv_bn_relu_layer(input_tensor_batch, [3, 3, 4, 16], 1)
+        activation_summary(conv0)
+        layers.append(conv0)
+
+    for i in range(n):
+        with tf.variable_scope('conv1_{}'.format(i), reuse=reuse):
+            if i == 0:
+                conv1 = residual_block(layers[-1], 16, first_block=True)
+            else:
+                conv1 = residual_block(layers[-1], 16)
+            activation_summary(conv1)
+            layers.append(conv1)
+
+    for i in range(n):
+        with tf.variable_scope('conv2_{}'.format(i), reuse=reuse):
+            conv2 = residual_block(layers[-1], 32)
+            activation_summary(conv2)
+            layers.append(conv2)
+
+    for i in range(n):
+        with tf.variable_scope('conv3_{}'.format(i), reuse=reuse):
+            conv3 = residual_block(layers[-1], 64)
+            layers.append(conv3)
+        assert conv3.get_shape().as_list()[1:] == [8, 8, 64]
+
+    with tf.variable_scope('fc', reuse=reuse):
+        in_channel = layers[-1].get_shape().as_list()[-1]
+        bn_layer = batch_normalization_layer(layers[-1], in_channel)
+        relu_layer = tf.nn.relu(bn_layer)
+        global_pool = tf.reduce_mean(relu_layer, [1, 2])
+
+        assert global_pool.get_shape().as_list()[-1:] == [64]
+        output = output_layer(global_pool, settings.LABELS_SIZE)
+        layers.append(output)
+
+    return layers[-1]
+
+
+if __name__ == "__main__":
+    create_variables('test', [2, 2])
