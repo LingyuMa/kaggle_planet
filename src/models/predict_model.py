@@ -54,9 +54,9 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
             predictions = []
             labels = []
             while step < num_iter and not coord.should_stop():
-                [y_pred, y_labels] = sess.run([y_pred, y_labels])
-                predictions.append(np.array(y_pred).squeeze())
-                labels.append(np.array(y_labels).squeeze())
+                preds, labs = sess.run([y_pred, y_labels])
+                predictions.append(np.array(preds).squeeze())
+                labels.append(np.array(labs).squeeze())
                 step += 1
             predictions = np.vstack(predictions)
             labels = np.vstack(labels)
