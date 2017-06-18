@@ -51,7 +51,12 @@ def train(total_loss, global_step):
         if grad is not None:
             tf.summary.histogram(var.op.name + '/gradients', grad)
 
-    with tf.control_dependencies([apply_gradient_op]):
+    # Track the moving averages of all trainable variables.
+    variable_averages = tf.train.ExponentialMovingAverage(
+        settings.MOVING_AVERAGE_DECAY, global_step)
+    variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
+    with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
         train_op = tf.no_op(name='train')
 
     return train_op
