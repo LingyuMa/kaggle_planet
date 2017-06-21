@@ -1,0 +1,6 @@
+model_checkpoint_path: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-6000"
+all_model_checkpoint_paths: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-4864"
+all_model_checkpoint_paths: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-5208"
+all_model_checkpoint_paths: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-5561"
+all_model_checkpoint_paths: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-5910"
+all_model_checkpoint_paths: "E:\\kaggle_planet\\src\\../reports/planet_train\\model.ckpt-6000"
