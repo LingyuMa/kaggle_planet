@@ -59,9 +59,9 @@ def train_inputs(batch_size):
         image = tf.image.random_flip_left_right(image)
         image = tf.image.random_flip_up_down(image)
         # rotate image randomly
-        rotate_angle = random.choice(np.arange(0, 2 * np.pi, np.pi / 4).tolist())
-        print(rotate_angle)
-        image = utils.rotate_image_tensor(image, rotate_angle, 'black')
+        # rotate_angle = np.random.randint(12) * np.pi / 6
+        # print(rotate_angle)
+        # image = utils.rotate_image_tensor(image, rotate_angle, 'black')
 
     # Normalize the image
     if settings.NORMALIZE_IMAGE:
@@ -99,7 +99,7 @@ def inputs(eval_data, batch_size):
 
 
 if __name__ == "__main__":
-    images, label_batch = train_inputs(512)
+    images, label_batch = train_inputs(64)
     init_op = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
 
@@ -109,8 +109,7 @@ if __name__ == "__main__":
         threads = tf.train.start_queue_runners(coord=coord)
 
         imgs, labs = sess.run([images, label_batch])
-        img = imgs[0, :, :, 0]
-        print(img)
+        img = imgs[25, :, :, 0]
         plt.imshow(img, cmap='gray')
         plt.show()
 
