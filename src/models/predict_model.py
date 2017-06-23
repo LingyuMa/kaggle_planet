@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 import numpy as np
 import math
+import os
 
 import src.models.network as network
 import src.data.data_provider as data
@@ -61,7 +62,11 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
             predictions = np.vstack(predictions)
             labels = np.vstack(labels)
             # Compute precision @ 1.
-            precision = fbeta_score(labels, predictions, beta=2, average='samples')
+            np.savetxt(os.path.join(settings.EVALUATION_PATH, 'out_labels.txt'), labels)
+            np.savetxt(os.path.join(settings.EVALUATION_PATH, 'out_predictions.txt'), predictions)
+            precision = fbeta_score(labels.astype(np.float32),
+                                    np.round((predictions > 0.5).astype(np.float32)),
+                                    beta=2, average='samples')
             print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
             summary = tf.Summary()
@@ -84,8 +89,8 @@ def evaluation():
         logits = network.inference(images, settings.NUM_RESIDUE_BLOCKS)
 
         # Calculate predictions
-        y_pred = tf.round(tf.cast(tf.sigmoid(logits) > 0.5, tf.float32))
-        y_labels = tf.round(tf.cast(labels, tf.float32))
+        y_pred = tf.sigmoid(logits)
+        y_labels = labels
 
         # Restore model
         saver = tf.train.Saver(tf.global_variables())
