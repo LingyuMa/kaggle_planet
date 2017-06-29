@@ -1,8 +1,5 @@
 import tensorflow as tf
-import src.data.utils as utils
 import src.settings as settings
-import numpy as np
-import random
 import matplotlib.pyplot as plt
 
 
@@ -17,11 +14,11 @@ def read_and_decode(filename_queue):
         }
     )
 
-    image = tf.decode_raw(features['image'], tf.int32)
+    image = tf.decode_raw(features['image'], tf.float16)
     label = tf.decode_raw(features['label'], tf.int32)
 
-    image = tf.reshape(image, [settings.RAW_IMAGE_HEIGHT, settings.RAW_IMAGE_WIDTH, settings.RAW_IMAGE_DEPTH])
-    label = tf.reshape(label, [settings.LABELS_SIZE])
+    image = tf.reshape(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH, settings.IMAGE_DEPTH])
+    label = tf.reshape(label, [len(settings.LABELS[settings.NETWORK_ID])])
 
     return image, label
 
@@ -50,18 +47,10 @@ def train_inputs(batch_size):
     filename_queue = tf.train.string_input_producer([settings.TRAIN_DATA_PATH])
     image, label = read_and_decode(filename_queue)
 
-    # Resize the image if necessary
-    if settings.IMAGE_WIDTH < settings.RAW_IMAGE_WIDTH or settings.IMAGE_HEIGHT < settings.RAW_IMAGE_HEIGHT:
-        image = tf.image.resize_images(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH])
-
     # Augment the image set
     if settings.DATA_AUGMENTATION:
         image = tf.image.random_flip_left_right(image)
         image = tf.image.random_flip_up_down(image)
-        # rotate image randomly
-        # rotate_angle = np.random.randint(12) * np.pi / 6
-        # print(rotate_angle)
-        # image = utils.rotate_image_tensor(image, rotate_angle, 'black')
 
     # Normalize the image
     if settings.NORMALIZE_IMAGE:
@@ -83,10 +72,6 @@ def inputs(eval_data, batch_size):
         num_examples_per_epoch = settings.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 
     image, label = read_and_decode(filename_queue)
-
-    # Resize the image if necessary
-    if settings.IMAGE_WIDTH < settings.RAW_IMAGE_WIDTH or settings.IMAGE_HEIGHT < settings.RAW_IMAGE_HEIGHT:
-        image = tf.image.resize_images(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH])
 
     # Normalize the image
     if settings.NORMALIZE_IMAGE:
