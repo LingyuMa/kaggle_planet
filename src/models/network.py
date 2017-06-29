@@ -3,8 +3,13 @@ import src.settings as settings
 import src.models.architecture as architecture
 
 
-def inference(images, n, reuse=False):
-    logits = architecture.resnet(images, n, reuse)
+def inference(images, reuse=False):
+    if settings.NETWORK_ID == 0:
+        logits = architecture.resnet(images, 5, add_group=False, reuse=reuse)
+    elif settings.NETWORK_ID == 1:
+        logits = architecture.resnet(images, 5, add_group=False, reuse=reuse)
+    else:
+        logits = architecture.resnet(images, 5, add_group=False, reuse=reuse)
     return logits
 
 
@@ -60,7 +65,3 @@ def train(total_loss, global_step):
         train_op = tf.no_op(name='train')
 
     return train_op
-
-
-
-
