@@ -52,16 +52,14 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
 
             num_iter = int(math.ceil(settings.EVALUATION_NUM_EXAMPLES / settings.BATCH_SIZE))
             step = 0
-            predictions = []
-            labels = []
+            predictions = np.zeros((num_iter * settings.BATCH_SIZE, len(settings.LABELS[settings.NETWORK_ID])))
+            labels = np.zeros((num_iter * settings.BATCH_SIZE, len(settings.LABELS[settings.NETWORK_ID])))
             while step < num_iter and not coord.should_stop():
                 preds, labs = sess.run([y_pred, y_labels])
-                predictions.append(np.array(preds).squeeze())
-                labels.append(np.array(labs).squeeze())
+                predictions[step * settings.BATCH_SIZE:(step + 1) * settings.BATCH_SIZE, :] = np.array(preds).squeeze()
+                labels[step * settings.BATCH_SIZE:(step + 1) * settings.BATCH_SIZE, :] = np.array(labs).squeeze()
                 print("{} / {} finished".format(step + 1, num_iter))
                 step += 1
-            predictions = np.vstack(predictions)
-            labels = np.vstack(labels)
             # Compute precision @ 1.
             np.savetxt(os.path.join(settings.EVALUATION_PATH, 'out_labels.txt'), labels)
             np.savetxt(os.path.join(settings.EVALUATION_PATH, 'out_predictions.txt'), predictions)
