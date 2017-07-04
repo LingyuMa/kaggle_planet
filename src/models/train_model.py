@@ -18,8 +18,6 @@ def train():
         with tf.device('/cpu:0'):
             images, labels = data.train_inputs(settings.BATCH_SIZE)
 
-        images = tf.cast(images, tf.float32)
-
         # Build the graph
         logits = network.inference(images)
 

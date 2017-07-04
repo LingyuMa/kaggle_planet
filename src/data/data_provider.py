@@ -20,7 +20,7 @@ def read_and_decode(filename_queue):
     image = tf.reshape(image, [settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH, settings.IMAGE_DEPTH])
     label = tf.reshape(label, [len(settings.LABELS[settings.NETWORK_ID])])
 
-    return image, label
+    return tf.cast(image, tf.float32), label
 
 
 def generate_image_and_label_batch(image, label, min_queue_examples, batch_size, shuffle):
