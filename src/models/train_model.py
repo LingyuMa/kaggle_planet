@@ -21,7 +21,7 @@ def train():
         images = tf.cast(images, tf.float32)
 
         # Build the graph
-        logits = network.inference(images, settings.NETWORK_ID)
+        logits = network.inference(images)
 
         # Calculate loss
         loss = network.loss(logits, labels)
