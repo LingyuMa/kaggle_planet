@@ -34,6 +34,9 @@ AUGMENT_FLAG = {'partly_cloudy': 'flip_1',
 
 LABELS = [WEATHER_LABELS, COMMON_LABELS, RARE_LABELS]
 
+# Add penalty to false negative
+LOSS_WEIGHT = None
+
 # Specify which network to train
 NETWORK_ID = 0
 
@@ -68,7 +71,7 @@ MOVING_AVERAGE_DECAY = 0.9999
 
 # Log options
 LOG_PATH = os.path.join(CURRENT_PATH, r'../reports/planet_train')
-MAX_STEPS = 16000  # number of batches to run
+MAX_STEPS = 21000  # number of batches to run
 LOG_DEVICE_PLACEMENT = False
 LOG_FREQUENCY = 10
 

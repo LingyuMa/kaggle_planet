@@ -16,8 +16,13 @@ def inference(images, reuse=False):
 def loss(logits, labels):
     logits = tf.cast(logits, tf.float32)
     labels = tf.cast(labels, tf.float32)
-    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels,
-                                                            name='cross_entropy_per_example')
+    if settings.LOSS_WEIGHT is None:
+        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels, logits=logits,
+                                                                name='cross_entropy_per_example')
+    else:
+        cross_entropy = tf.nn.weighted_cross_entropy_with_logits(targets=labels, logits=logits,
+                                                                 pos_weight=settings.LOSS_WEIGHT,
+                                                                 name='cross_entropy_per_example')
     cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
     reg_loss = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
     total_loss = tf.add_n([cross_entropy_mean] + reg_loss)
