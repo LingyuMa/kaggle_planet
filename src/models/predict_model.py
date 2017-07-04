@@ -15,7 +15,7 @@ from sklearn.metrics import fbeta_score
 
 def f2_score(y_true, y_pred):
     y_true = tf.cast(y_true, "int32")
-    y_pred = tf.cast(tf.round(y_pred), "int32") # implicit 0.5 threshold via tf.round
+    y_pred = tf.cast(tf.round(y_pred), "int32")  # implicit 0.5 threshold via tf.round
     y_correct = y_true * y_pred
     sum_true = tf.reduce_sum(y_true, axis=1)
     sum_pred = tf.reduce_sum(y_pred, axis=1)
@@ -58,6 +58,7 @@ def eval_once(saver, summary_writer, y_pred, y_labels, summary_op):
                 preds, labs = sess.run([y_pred, y_labels])
                 predictions.append(np.array(preds).squeeze())
                 labels.append(np.array(labs).squeeze())
+                print("{} / {} finished".format(step + 1, num_iter))
                 step += 1
             predictions = np.vstack(predictions)
             labels = np.vstack(labels)
@@ -86,7 +87,7 @@ def evaluation():
         images, labels = data.inputs(False, settings.BATCH_SIZE)
 
         # Inference model
-        logits = network.inference(images, settings.NUM_RESIDUE_BLOCKS)
+        logits = network.inference(images)
 
         # Calculate predictions
         y_pred = tf.sigmoid(logits)
